@@ -1,19 +1,92 @@
 // ============================================
-//  app.js — Comida Solidaria
+//  app.js — Comida Solidaria + Firebase
 //  usuario: root  |  contraseña: 00899Bryan
 // ============================================
 
-const _U = 'root';
-const _H = btoa(btoa('00899Bryan') + ':yk_25');
+import { initializeApp }                     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ── Firebase config
+const firebaseConfig = {
+  apiKey:            "AIzaSyCFeEqn07p5631fTt4JtCXtqBETAjeQfGI",
+  authDomain:        "app-de-menu.firebaseapp.com",
+  projectId:         "app-de-menu",
+  storageBucket:     "app-de-menu.firebasestorage.app",
+  messagingSenderId: "958368843204",
+  appId:             "1:958368843204:web:fe1cc6cca1252a462ad091"
+};
+
+const fbApp     = initializeApp(firebaseConfig);
+const db        = getFirestore(fbApp);
+const FLYER_DOC = doc(db, 'flyer', 'config');
+
+// ── Auth
+const _U    = 'root';
+const _H    = btoa(btoa('00899Bryan') + ':yk_25');
 const _hash = p => btoa(btoa(p) + ':yk_25');
 
 let isAdmin = false;
 let waOwner = '5491139283936';
 
-// ── Mostrar/ocultar barra admin usando style directo (evita conflictos CSS)
+// ============================================
+//  FIREBASE — cargar datos al iniciar
+// ============================================
+async function cargarDesdeFirebase() {
+  try {
+    const snap = await getDoc(FLYER_DOC);
+    if (!snap.exists()) return;
+    const d = snap.data();
+
+    if (d.badge)    document.getElementById('fl-badge').textContent    = d.badge;
+    if (d.subtitle) document.getElementById('fl-subtitle').textContent = d.subtitle;
+    if (d.line1)    document.getElementById('fl-line1').textContent    = d.line1;
+    if (d.line2)    document.getElementById('fl-line2').textContent    = d.line2;
+    if (d.price)    document.getElementById('fl-price').textContent    = d.price;
+    if (d.time)     document.getElementById('fl-time').textContent     = d.time;
+    if (d.tel1)     document.getElementById('fl-tel1').textContent     = d.tel1;
+    if (d.tel2)     document.getElementById('fl-tel2').textContent     = d.tel2;
+    if (d.footer)   document.getElementById('fl-footer').textContent   = d.footer;
+    if (d.zona)     document.getElementById('fl-zona').innerHTML       = d.zona;
+    if (d.date)     document.getElementById('fl-date').innerHTML       = d.date;
+    if (d.waOwner)  waOwner = d.waOwner;
+    if (d.foto)     document.getElementById('photoInner').innerHTML    = `<img src="${d.foto}" alt="Foto del plato">`;
+
+    // Llenar inputs del panel
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    set('e-badge',    d.badge);
+    set('e-subtitle', d.subtitle);
+    set('e-line1',    d.line1);
+    set('e-line2',    d.line2);
+    set('e-price',    d.price);
+    set('e-time',     d.time);
+    set('e-tel1',     d.tel1);
+    set('e-tel2',     d.tel2);
+    set('e-footer',   d.footer);
+    set('e-zona',     d.zonaRaw);
+    set('e-date',     d.dateRaw);
+    set('e-waowner',  d.waOwner);
+
+  } catch (err) {
+    console.warn('Firebase: no se pudieron cargar los datos', err);
+  }
+}
+
+// ── Guardar en Firebase
+async function guardarEnFirebase(datos) {
+  try {
+    await setDoc(FLYER_DOC, datos, { merge: true });
+  } catch (err) {
+    console.error('Firebase: error al guardar', err);
+    showToast('⚠️ Error al guardar en la nube', '#e67e22');
+  }
+}
+
+// ============================================
+//  ADMIN BAR
+// ============================================
 function showAdminBar() {
   const bar = document.getElementById('actionBar');
-  bar.style.cssText = 'display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:100%; max-width:430px;';
+  bar.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%;max-width:430px;';
 }
 function hideAdminBar() {
   document.getElementById('actionBar').style.cssText = 'display:none';
@@ -41,17 +114,10 @@ function doLogin() {
   if (u === _U && _hash(p) === _H) {
     isAdmin = true;
     closeLogin();
-
-    // Mostrar barra de botones
     showAdminBar();
-
-    // Ocultar botón discreto, mostrar chip logout
     document.getElementById('adminTrigger').style.display = 'none';
     document.getElementById('logoutChip').classList.add('visible');
-
-    // Activar modo admin en el flyer
     document.getElementById('flyer').classList.add('admin-mode');
-
     showToast('✅ Bienvenido, ' + u + '!', '#c8891e');
   } else {
     document.getElementById('loginError').classList.add('show');
@@ -83,32 +149,64 @@ function closePanel() {
   document.getElementById('panelOverlay').classList.remove('open');
 }
 
-function applyChanges() {
+async function applyChanges() {
   const g = id => document.getElementById(id).value.trim();
 
-  document.getElementById('fl-badge').textContent    = g('e-badge');
-  document.getElementById('fl-subtitle').textContent = g('e-subtitle');
-  document.getElementById('fl-line1').textContent    = g('e-line1');
-  document.getElementById('fl-line2').textContent    = g('e-line2');
-  document.getElementById('fl-price').textContent    = g('e-price');
-  document.getElementById('fl-time').textContent     = g('e-time');
-  document.getElementById('fl-tel1').textContent     = g('e-tel1');
-  document.getElementById('fl-tel2').textContent     = g('e-tel2');
-  document.getElementById('fl-footer').textContent   = g('e-footer');
-  document.getElementById('fl-zona').innerHTML       = g('e-zona').replace(' ', '<br>');
+  const badge    = g('e-badge');
+  const subtitle = g('e-subtitle');
+  const line1    = g('e-line1');
+  const line2    = g('e-line2');
+  const price    = g('e-price');
+  const time     = g('e-time');
+  const tel1     = g('e-tel1');
+  const tel2     = g('e-tel2');
+  const footer   = g('e-footer');
+  const zonaRaw  = g('e-zona');
+  const dateRaw  = g('e-date');
+  const wa       = g('e-waowner');
 
-  const parts = g('e-date').split(' ');
-  const mid   = Math.ceil(parts.length / 2);
-  document.getElementById('fl-date').innerHTML =
-    parts.slice(0, mid).join(' ') + '<br>' + parts.slice(mid).join(' ');
+  // Aplicar al DOM
+  document.getElementById('fl-badge').textContent    = badge;
+  document.getElementById('fl-subtitle').textContent = subtitle;
+  document.getElementById('fl-line1').textContent    = line1;
+  document.getElementById('fl-line2').textContent    = line2;
+  document.getElementById('fl-price').textContent    = price;
+  document.getElementById('fl-time').textContent     = time;
+  document.getElementById('fl-tel1').textContent     = tel1;
+  document.getElementById('fl-tel2').textContent     = tel2;
+  document.getElementById('fl-footer').textContent   = footer;
+  document.getElementById('fl-zona').innerHTML       = zonaRaw.replace(' ', '<br>');
 
-  waOwner = g('e-waowner');
+  const parts   = dateRaw.split(' ');
+  const mid     = Math.ceil(parts.length / 2);
+  const dateHTML = parts.slice(0, mid).join(' ') + '<br>' + parts.slice(mid).join(' ');
+  document.getElementById('fl-date').innerHTML = dateHTML;
+
+  waOwner = wa;
+
+  // Foto actual
+  const imgEl   = document.querySelector('#photoInner img');
+  const fotoB64 = imgEl ? imgEl.src : null;
+
+  showToast('💾 Guardando en la nube...', '#c8891e');
+
+  await guardarEnFirebase({
+    badge, subtitle, line1, line2,
+    price, time, tel1, tel2, footer,
+    zonaRaw, dateRaw,
+    zona:    zonaRaw.replace(' ', '<br>'),
+    date:    dateHTML,
+    waOwner: wa,
+    foto:    fotoB64,
+    updatedAt: new Date().toISOString()
+  });
+
   closePanel();
-  showToast('✅ ¡Flyer actualizado!', '#c8891e');
+  showToast('✅ ¡Flyer guardado en la nube! 🔥', '#c8891e');
 }
 
 // ============================================
-//  FOTO (solo en modo admin)
+//  FOTO
 // ============================================
 function handlePhotoClick() {
   if (!isAdmin) return;
@@ -116,238 +214,125 @@ function handlePhotoClick() {
 }
 
 // ============================================
-//  EXPORTAR PNG — dibuja el flyer en canvas nativo
-//  usando fuentes del sistema (sin depender de Google Fonts)
+//  EXPORTAR PNG — dibuja en canvas nativo
 // ============================================
 async function exportPNG() {
   if (!isAdmin) { openLogin(); return; }
   showToast('⏳ Generando PNG...', '#c8891e');
 
-  // Leer valores actuales del flyer
   const badge    = document.getElementById('fl-badge').textContent;
   const subtitle = document.getElementById('fl-subtitle').textContent;
   const line1    = document.getElementById('fl-line1').textContent;
   const line2    = document.getElementById('fl-line2').textContent;
   const precio   = document.getElementById('fl-price').textContent;
-  const fecha    = document.getElementById('fl-date').innerText.replace('\n',' ');
+  const fecha    = document.getElementById('fl-date').innerText.replace('\n', ' ');
   const hora     = document.getElementById('fl-time').textContent;
-  const zona     = document.getElementById('fl-zona').innerText.replace('\n',' ');
+  const zona     = document.getElementById('fl-zona').innerText.replace('\n', ' ');
   const tel1     = document.getElementById('fl-tel1').textContent;
   const tel2     = document.getElementById('fl-tel2').textContent;
   const footer   = document.getElementById('fl-footer').textContent;
+  const imgEl    = document.querySelector('#photoInner img');
 
-  // Foto del plato (si fue cargada)
-  const imgEl = document.querySelector('#photoInner img');
-
-  const W = 430 * 3, H = 800 * 3;
-  const cv = document.createElement('canvas');
-  cv.width  = W;
-  cv.height = H;
+  const W = 430 * 3, H = 800 * 3, s = 3;
+  const cv  = document.createElement('canvas');
+  cv.width  = W; cv.height = H;
   const ctx = cv.getContext('2d');
-  const s = 3; // escala
 
-  // ── Fondo madera con gradiente
+  // Fondo madera
   const gBg = ctx.createLinearGradient(0, 0, W, H);
-  gBg.addColorStop(0,    '#5a2d12');
-  gBg.addColorStop(0.20, '#3d1a08');
-  gBg.addColorStop(0.35, '#6b3518');
-  gBg.addColorStop(0.50, '#3a1809');
-  gBg.addColorStop(0.60, '#7a4020');
-  gBg.addColorStop(0.75, '#3b1c0a');
-  gBg.addColorStop(0.90, '#5c2e12');
-  gBg.addColorStop(1,    '#2e1206');
-  ctx.fillStyle = gBg;
-  ctx.fillRect(0, 0, W, H);
+  gBg.addColorStop(0, '#5a2d12'); gBg.addColorStop(0.2, '#3d1a08');
+  gBg.addColorStop(0.35, '#6b3518'); gBg.addColorStop(0.5, '#3a1809');
+  gBg.addColorStop(0.6, '#7a4020'); gBg.addColorStop(0.75, '#3b1c0a');
+  gBg.addColorStop(0.9, '#5c2e12'); gBg.addColorStop(1, '#2e1206');
+  ctx.fillStyle = gBg; ctx.fillRect(0, 0, W, H);
 
-  // Vetas de madera
-  ctx.save();
   for (let i = 0; i < H; i += 30 * s) {
-    ctx.strokeStyle = 'rgba(180,100,30,0.06)';
-    ctx.lineWidth = 2 * s;
-    ctx.beginPath();
-    ctx.moveTo(0, i);
-    ctx.lineTo(W, i + 20 * s);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // ── Franjas Ecuador (arriba)
-  ctx.fillStyle = '#FFD100'; ctx.fillRect(0, 0, W * 0.5, 14 * s);
-  ctx.fillStyle = '#003DA5'; ctx.fillRect(W * 0.5, 0, W * 0.25, 14 * s);
-  ctx.fillStyle = '#C8102E'; ctx.fillRect(W * 0.75, 0, W * 0.25, 14 * s);
-
-  // ── Franjas Ecuador (abajo)
-  ctx.fillStyle = '#FFD100'; ctx.fillRect(0, H - 14 * s, W * 0.5, 14 * s);
-  ctx.fillStyle = '#003DA5'; ctx.fillRect(W * 0.5, H - 14 * s, W * 0.25, 14 * s);
-  ctx.fillStyle = '#C8102E'; ctx.fillRect(W * 0.75, H - 14 * s, W * 0.25, 14 * s);
-
-  // ── Borde ornamental
-  ctx.strokeStyle = 'rgba(200,137,30,0.55)';
-  ctx.lineWidth = 1.5 * s;
-  ctx.strokeRect(16 * s, 16 * s, (430 - 32) * s, (800 - 32) * s);
-  ctx.strokeStyle = 'rgba(200,137,30,0.25)';
-  ctx.lineWidth = 1 * s;
-  ctx.strokeRect(20 * s, 20 * s, (430 - 40) * s, (800 - 40) * s);
-
-  // Helper: línea divisora
-  function divider(y) {
-    const gd = ctx.createLinearGradient(0, 0, W, 0);
-    gd.addColorStop(0,   'transparent');
-    gd.addColorStop(0.5, 'rgba(200,137,30,0.6)');
-    gd.addColorStop(1,   'transparent');
-    ctx.strokeStyle = gd;
-    ctx.lineWidth = 1 * s;
-    ctx.beginPath();
-    ctx.moveTo(40 * s, y * s);
-    ctx.lineTo((430 - 40) * s, y * s);
-    ctx.stroke();
+    ctx.strokeStyle = 'rgba(180,100,30,0.06)'; ctx.lineWidth = 2 * s;
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i + 20 * s); ctx.stroke();
   }
 
-  // Helper: texto centrado
-  function cText(txt, y, font, color, maxW) {
-    ctx.font  = font;
-    ctx.fillStyle = color;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    if (maxW) {
-      ctx.fillText(txt, W / 2, y * s, maxW * s);
-    } else {
-      ctx.fillText(txt, W / 2, y * s);
-    }
-  }
+  [[0],[H - 14 * s]].forEach(([y]) => {
+    ctx.fillStyle='#FFD100'; ctx.fillRect(0,y,W*0.5,14*s);
+    ctx.fillStyle='#003DA5'; ctx.fillRect(W*0.5,y,W*0.25,14*s);
+    ctx.fillStyle='#C8102E'; ctx.fillRect(W*0.75,y,W*0.25,14*s);
+  });
 
-  // ── BADGE
-  ctx.font = `bold ${11 * s}px 'Georgia', serif`;
-  ctx.fillStyle = 'rgba(240,180,74,0.9)';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(badge.toUpperCase(), W / 2, 55 * s);
-  divider(65);
+  ctx.strokeStyle='rgba(200,137,30,0.55)'; ctx.lineWidth=1.5*s;
+  ctx.strokeRect(16*s,16*s,(430-32)*s,(800-32)*s);
+  ctx.strokeStyle='rgba(200,137,30,0.25)'; ctx.lineWidth=1*s;
+  ctx.strokeRect(20*s,20*s,(430-40)*s,(800-40)*s);
 
-  // ── SUBTITLE
-  ctx.font = `italic ${22 * s}px Georgia, serif`;
-  ctx.fillStyle = 'rgba(245,230,200,0.85)';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(subtitle, W / 2, 80 * s);
+  const divider = y => {
+    const gd=ctx.createLinearGradient(0,0,W,0);
+    gd.addColorStop(0,'transparent'); gd.addColorStop(0.5,'rgba(200,137,30,0.6)'); gd.addColorStop(1,'transparent');
+    ctx.strokeStyle=gd; ctx.lineWidth=1*s;
+    ctx.beginPath(); ctx.moveTo(40*s,y*s); ctx.lineTo((430-40)*s,y*s); ctx.stroke();
+  };
 
-  // ── NOMBRE PLATO
-  ctx.font = `bold ${52 * s}px Georgia, 'Times New Roman', serif`;
-  ctx.fillStyle = '#f5e6c8';
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 8 * s;
-  ctx.shadowOffsetY = 4 * s;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(line1, W / 2, 120 * s);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
 
-  ctx.font = `bold italic ${44 * s}px Georgia, 'Times New Roman', serif`;
-  ctx.fillStyle = '#f0b84a';
-  ctx.fillText(line2, W / 2, 168 * s);
-  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.font=`bold ${11*s}px Georgia,serif`; ctx.fillStyle='rgba(240,180,74,0.9)';
+  ctx.fillText(badge.toUpperCase(), W/2, 55*s); divider(65);
 
+  ctx.font=`italic ${22*s}px Georgia,serif`; ctx.fillStyle='rgba(245,230,200,0.85)';
+  ctx.fillText(subtitle, W/2, 80*s);
+
+  ctx.font=`bold ${52*s}px Georgia,serif`; ctx.fillStyle='#f5e6c8';
+  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=8*s; ctx.shadowOffsetY=4*s;
+  ctx.fillText(line1, W/2, 120*s);
+  ctx.font=`bold italic ${44*s}px Georgia,serif`; ctx.fillStyle='#f0b84a';
+  ctx.fillText(line2, W/2, 168*s);
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
   divider(192);
 
-  // ── FOTO DEL PLATO
-  const frameX = 80 * s, frameY = 200 * s;
-  const frameW = 270 * s, frameH = 270 * s;
+  const fX=80*s,fY=200*s,fW=270*s,fH=270*s;
+  const gF=ctx.createLinearGradient(fX,0,fX+fW,0);
+  gF.addColorStop(0,'#7a4020'); gF.addColorStop(0.5,'#5a2c10'); gF.addColorStop(1,'#7a4020');
+  ctx.fillStyle=gF; ctx.fillRect(fX-10*s,fY-10*s,fW+20*s,fH+20*s);
+  ctx.fillStyle='#3b1f0e'; ctx.fillRect(fX-4*s,fY-4*s,fW+8*s,fH+8*s);
 
-  // Marco madera
-  const gFrame = ctx.createLinearGradient(frameX - 10 * s, 0, frameX + frameW + 10 * s, 0);
-  gFrame.addColorStop(0, '#7a4020'); gFrame.addColorStop(0.5, '#5a2c10'); gFrame.addColorStop(1, '#7a4020');
-  ctx.fillStyle = gFrame;
-  ctx.fillRect(frameX - 10 * s, frameY - 10 * s, frameW + 20 * s, frameH + 20 * s);
-
-  ctx.fillStyle = '#3b1f0e';
-  ctx.fillRect(frameX - 4 * s, frameY - 4 * s, frameW + 8 * s, frameH + 8 * s);
-
-  if (imgEl && imgEl.complete) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(frameX, frameY, frameW, frameH);
-    ctx.clip();
-    ctx.drawImage(imgEl, frameX, frameY, frameW, frameH);
-    ctx.restore();
+  if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+    ctx.save(); ctx.beginPath(); ctx.rect(fX,fY,fW,fH); ctx.clip();
+    ctx.drawImage(imgEl,fX,fY,fW,fH); ctx.restore();
   } else {
-    // Placeholder si no hay foto
-    const gPh = ctx.createLinearGradient(frameX, frameY, frameX + frameW, frameY + frameH);
-    gPh.addColorStop(0, '#4a2810'); gPh.addColorStop(1, '#2a1206');
-    ctx.fillStyle = gPh;
-    ctx.fillRect(frameX, frameY, frameW, frameH);
-    ctx.font = `${60 * s}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🍽️', W / 2, (frameY / s + frameH / s / 2) * s);
+    const gPh=ctx.createLinearGradient(fX,fY,fX+fW,fY+fH);
+    gPh.addColorStop(0,'#4a2810'); gPh.addColorStop(1,'#2a1206');
+    ctx.fillStyle=gPh; ctx.fillRect(fX,fY,fW,fH);
+    ctx.font=`${60*s}px serif`; ctx.fillText('🍽️', W/2, fY+fH/2);
   }
-
   divider(490);
 
-  // ── PRECIO
-  const pX = 115 * s, pY = 498 * s, pW = 200 * s, pH = 54 * s;
-  ctx.fillStyle = '#f5e6c8';
-  ctx.fillRect(pX, pY, pW, pH);
-  ctx.strokeStyle = '#c8891e'; ctx.lineWidth = 2 * s;
-  ctx.strokeRect(pX, pY, pW, pH);
-
-  ctx.font = `bold ${40 * s}px Georgia, serif`;
-  ctx.fillStyle = '#3b1f0e';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(precio, W / 2, (pY / s + pH / s / 2) * s);
-
-  ctx.font = `bold ${9 * s}px Arial, sans-serif`;
-  ctx.fillStyle = '#6b3a1f';
-  ctx.fillText('POR PLATO', W / 2, (pY / s + pH / s / 2 + 22) * s);
-
+  const pX=115*s,pY=498*s,pW=200*s,pH=54*s;
+  ctx.fillStyle='#f5e6c8'; ctx.fillRect(pX,pY,pW,pH);
+  ctx.strokeStyle='#c8891e'; ctx.lineWidth=2*s; ctx.strokeRect(pX,pY,pW,pH);
+  ctx.font=`bold ${40*s}px Georgia,serif`; ctx.fillStyle='#3b1f0e';
+  ctx.fillText(precio, W/2, pY+pH/2);
+  ctx.font=`bold ${9*s}px Arial,sans-serif`; ctx.fillStyle='#6b3a1f';
+  ctx.fillText('POR PLATO', W/2, pY+pH/2+22*s);
   divider(565);
 
-  // ── GRID INFO (fecha / zona / teléfonos)
-  function infoCard(x, y, w, h, icon, label, val, sub) {
-    ctx.strokeStyle = 'rgba(200,137,30,0.35)';
-    ctx.lineWidth = 1 * s;
-    ctx.strokeRect(x * s, y * s, w * s, h * s);
-
-    // línea dorada arriba
-    const gl = ctx.createLinearGradient(x * s, 0, (x + w) * s, 0);
+  const infoCard = (x,y,w,h,icon,label,val,sub) => {
+    ctx.strokeStyle='rgba(200,137,30,0.35)'; ctx.lineWidth=1*s;
+    ctx.strokeRect(x*s,y*s,w*s,h*s);
+    const gl=ctx.createLinearGradient(x*s,0,(x+w)*s,0);
     gl.addColorStop(0,'transparent'); gl.addColorStop(0.5,'rgba(200,137,30,0.7)'); gl.addColorStop(1,'transparent');
-    ctx.strokeStyle = gl; ctx.lineWidth = 2 * s;
-    ctx.beginPath(); ctx.moveTo(x * s, y * s); ctx.lineTo((x + w) * s, y * s); ctx.stroke();
+    ctx.strokeStyle=gl; ctx.lineWidth=2*s;
+    ctx.beginPath(); ctx.moveTo(x*s,y*s); ctx.lineTo((x+w)*s,y*s); ctx.stroke();
+    const cx=(x+w/2)*s;
+    ctx.font=`${16*s}px serif`; ctx.fillStyle='#fff'; ctx.fillText(icon,cx,(y+14)*s);
+    ctx.font=`bold ${7*s}px Arial,sans-serif`; ctx.fillStyle='#f0b84a'; ctx.fillText(label.toUpperCase(),cx,(y+26)*s);
+    ctx.font=`bold ${11*s}px Georgia,serif`; ctx.fillStyle='#f5e6c8'; ctx.fillText(val,cx,(y+38)*s);
+    if(sub){ctx.font=`${9*s}px Arial,sans-serif`; ctx.fillStyle='#e8d0a0'; ctx.fillText(sub,cx,(y+50)*s);}
+  };
 
-    const cx = (x + w / 2) * s;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
-    ctx.font = `${16 * s}px serif`;
-    ctx.fillStyle = '#fff';
-    ctx.fillText(icon, cx, (y + 14) * s);
-
-    ctx.font = `bold ${7 * s}px Arial, sans-serif`;
-    ctx.fillStyle = '#f0b84a';
-    ctx.fillText(label.toUpperCase(), cx, (y + 26) * s);
-
-    ctx.font = `bold ${11 * s}px Georgia, serif`;
-    ctx.fillStyle = '#f5e6c8';
-    ctx.fillText(val, cx, (y + 38) * s);
-
-    if (sub) {
-      ctx.font = `${9 * s}px Arial, sans-serif`;
-      ctx.fillStyle = '#e8d0a0';
-      ctx.fillText(sub, cx, (y + 50) * s);
-    }
-  }
-
-  infoCard(35, 572, 170, 65, '📅', 'Cuándo', fecha, hora);
-  infoCard(225, 572, 170, 65, '📍', 'Retiro', zona, '');
-
-  // Card teléfonos ancho completo
-  infoCard(35, 647, 360, 55, '📞', 'Reservas', tel1 + '   ' + tel2, '');
-
+  infoCard(35,572,170,65,'📅','Cuándo',fecha,hora);
+  infoCard(225,572,170,65,'📍','Retiro',zona,'');
+  infoCard(35,647,360,55,'📞','Reservas',tel1+'   '+tel2,'');
   divider(716);
 
-  // ── FOOTER
-  ctx.font = `italic ${14 * s}px Georgia, serif`;
-  ctx.fillStyle = 'rgba(200,137,30,0.75)';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(footer, W / 2, 730 * s);
+  ctx.font=`italic ${14*s}px Georgia,serif`; ctx.fillStyle='rgba(200,137,30,0.75)';
+  ctx.fillText(footer, W/2, 730*s);
 
-  // ── Descargar
   await new Promise(r => setTimeout(r, 100));
   const a = document.createElement('a');
   a.download = 'flyer-comida-solidaria.png';
@@ -409,11 +394,27 @@ function showToast(msg, color) {
 }
 
 // ============================================
-//  EVENTOS AL CARGAR
+//  Exponer funciones al HTML (onclick en HTML requiere global)
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
+window.openLogin        = openLogin;
+window.closeLogin       = closeLogin;
+window.doLogin          = doLogin;
+window.doLogout         = doLogout;
+window.openPanel        = openPanel;
+window.closePanel       = closePanel;
+window.applyChanges     = applyChanges;
+window.handlePhotoClick = handlePhotoClick;
+window.exportPNG        = exportPNG;
+window.enviarReserva    = enviarReserva;
 
-  // Cerrar overlays clickeando fuera
+// ============================================
+//  INIT
+// ============================================
+document.addEventListener('DOMContentLoaded', async () => {
+
+  // Cargar datos guardados en Firebase
+  await cargarDesdeFirebase();
+
   document.getElementById('panelOverlay').addEventListener('click', function(e) {
     if (e.target === this) closePanel();
   });
@@ -421,21 +422,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closeLogin();
   });
 
-  // Enter en login
   ['l-user', 'l-pass'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
       if (e.key === 'Enter') doLogin();
     });
   });
 
-  // Cargar foto
-  document.getElementById('photoInput').addEventListener('change', function() {
+  // Foto — guardar en Firebase al cargar
+  document.getElementById('photoInput').addEventListener('change', async function() {
     const file = this.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('photoInner').innerHTML =
-        `<img src="${e.target.result}" alt="Foto del plato">`;
+    reader.onload = async e => {
+      const b64 = e.target.result;
+      document.getElementById('photoInner').innerHTML = `<img src="${b64}" alt="Foto del plato">`;
+      showToast('💾 Guardando foto...', '#c8891e');
+      await guardarEnFirebase({ foto: b64, updatedAt: new Date().toISOString() });
+      showToast('✅ Foto guardada en la nube 🔥', '#c8891e');
     };
     reader.readAsDataURL(file);
   });

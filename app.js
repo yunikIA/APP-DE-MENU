@@ -1,19 +1,27 @@
-// ══════════════════════════════════════
-// app.js — Comida Solidaria
-// user: root  |  pass: 00899Bryan
-// ══════════════════════════════════════
+// ============================================
+//  app.js — Comida Solidaria
+//  usuario: root  |  contraseña: 00899Bryan
+// ============================================
 
-// Credenciales (ofuscadas con doble btoa + salt)
 const _U = 'root';
-const _H = btoa(btoa('00899Bryan') + ':yk_salt_25');
-function _hash(p) { return btoa(btoa(p) + ':yk_salt_25'); }
+const _H = btoa(btoa('00899Bryan') + ':yk_25');
+const _hash = p => btoa(btoa(p) + ':yk_25');
 
 let isAdmin = false;
 let waOwner = '5491139283936';
 
-// ──────────────────────────────
-// LOGIN
-// ──────────────────────────────
+// ── Mostrar/ocultar barra admin usando style directo (evita conflictos CSS)
+function showAdminBar() {
+  const bar = document.getElementById('actionBar');
+  bar.style.cssText = 'display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:100%; max-width:430px;';
+}
+function hideAdminBar() {
+  document.getElementById('actionBar').style.cssText = 'display:none';
+}
+
+// ============================================
+//  LOGIN
+// ============================================
 function openLogin() {
   document.getElementById('loginOverlay').classList.add('open');
   setTimeout(() => document.getElementById('l-user').focus(), 120);
@@ -33,8 +41,18 @@ function doLogin() {
   if (u === _U && _hash(p) === _H) {
     isAdmin = true;
     closeLogin();
-    enableAdmin();
-    showToast('✅ Bienvenido ' + u + '!', '#c8891e');
+
+    // Mostrar barra de botones
+    showAdminBar();
+
+    // Ocultar botón discreto, mostrar chip logout
+    document.getElementById('adminTrigger').style.display = 'none';
+    document.getElementById('logoutChip').classList.add('visible');
+
+    // Activar modo admin en el flyer
+    document.getElementById('flyer').classList.add('admin-mode');
+
+    showToast('✅ Bienvenido, ' + u + '!', '#c8891e');
   } else {
     document.getElementById('loginError').classList.add('show');
     const box = document.getElementById('loginBox');
@@ -44,30 +62,20 @@ function doLogin() {
   }
 }
 
-function enableAdmin() {
-  // Mostrar barra de botones
-  document.getElementById('actionBar').classList.add('visible');
-  // Ocultar botón discreto, mostrar chip logout
-  document.getElementById('adminTrigger').style.display = 'none';
-  document.getElementById('logoutChip').classList.add('visible');
-  // Activar modo admin en el flyer (foto clickeable)
-  document.getElementById('flyer').classList.add('admin-mode');
-}
-
 function doLogout() {
   isAdmin = false;
-  document.getElementById('actionBar').classList.remove('visible');
+  hideAdminBar();
   document.getElementById('adminTrigger').style.display = 'flex';
   document.getElementById('logoutChip').classList.remove('visible');
   document.getElementById('flyer').classList.remove('admin-mode');
   showToast('👋 Sesión cerrada', '#555');
 }
 
-// ──────────────────────────────
-// PANEL DE EDICIÓN
-// ──────────────────────────────
+// ============================================
+//  PANEL EDICIÓN
+// ============================================
 function openPanel() {
-  if (!isAdmin) { showToast('🔒 Necesitás iniciar sesión', '#c0392b'); return; }
+  if (!isAdmin) { openLogin(); return; }
   document.getElementById('panelOverlay').classList.add('open');
 }
 
@@ -99,40 +107,63 @@ function applyChanges() {
   showToast('✅ ¡Flyer actualizado!', '#c8891e');
 }
 
-// ──────────────────────────────
-// FOTO
-// ──────────────────────────────
+// ============================================
+//  FOTO (solo en modo admin)
+// ============================================
 function handlePhotoClick() {
   if (!isAdmin) return;
   document.getElementById('photoInput').click();
 }
 
-// ──────────────────────────────
-// EXPORTAR PNG
-// ──────────────────────────────
-function exportPNG() {
-  if (!isAdmin) { showToast('🔒 Necesitás iniciar sesión', '#c0392b'); return; }
+// ============================================
+//  EXPORTAR PNG — espera fuentes antes de renderizar
+// ============================================
+async function exportPNG() {
+  if (!isAdmin) { openLogin(); return; }
+  showToast('⏳ Preparando exportación...', '#c8891e');
+
+  // 1. Esperar que todas las fuentes estén listas
+  await document.fonts.ready;
+
+  // 2. Pequeña pausa extra para que los emojis y renders terminen
+  await new Promise(r => setTimeout(r, 400));
+
   showToast('⏳ Generando PNG...', '#c8891e');
 
-  html2canvas(document.getElementById('flyer'), {
-    scale: 3,
-    useCORS: true,
-    backgroundColor: null,
-    logging: false
-  }).then(canvas => {
+  try {
+    const canvas = await html2canvas(document.getElementById('flyer'), {
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#3b1f0e',
+      logging: false,
+      imageTimeout: 0,
+      onclone: (clonedDoc) => {
+        // Aseguramos que el clon tenga todos los estilos de fuentes cargados
+        const style = clonedDoc.createElement('style');
+        style.textContent = `
+          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Cabin:wght@400;700&family=Satisfy&display=swap');
+          * { -webkit-font-smoothing: antialiased; }
+        `;
+        clonedDoc.head.appendChild(style);
+      }
+    });
+
     const a = document.createElement('a');
     a.download = 'flyer-comida-solidaria.png';
-    a.href = canvas.toDataURL('image/png');
+    a.href = canvas.toDataURL('image/png', 1.0);
     a.click();
     showToast('📥 ¡PNG descargado!', '#c8891e');
-  }).catch(() => {
+
+  } catch (err) {
+    console.error(err);
     showToast('❌ Error al exportar', '#c0392b');
-  });
+  }
 }
 
-// ──────────────────────────────
-// RESERVA WHATSAPP
-// ──────────────────────────────
+// ============================================
+//  RESERVA WHATSAPP
+// ============================================
 function enviarReserva() {
   const nombre = document.getElementById('r-nombre').value.trim();
   const tel    = document.getElementById('r-tel').value.trim();
@@ -171,9 +202,9 @@ function enviarReserva() {
   showToast('✅ Abriendo WhatsApp...', '#25d366');
 }
 
-// ──────────────────────────────
-// TOAST
-// ──────────────────────────────
+// ============================================
+//  TOAST
+// ============================================
 function showToast(msg, color) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -182,9 +213,9 @@ function showToast(msg, color) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// ──────────────────────────────
-// EVENTOS AL CARGAR
-// ──────────────────────────────
+// ============================================
+//  EVENTOS AL CARGAR
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
 
   // Cerrar overlays clickeando fuera
@@ -195,14 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closeLogin();
   });
 
-  // Enter en los campos del login
+  // Enter en login
   ['l-user', 'l-pass'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
       if (e.key === 'Enter') doLogin();
     });
   });
 
-  // Cambiar foto
+  // Cargar foto
   document.getElementById('photoInput').addEventListener('change', function() {
     const file = this.files[0];
     if (!file) return;

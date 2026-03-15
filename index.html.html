@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comida Solidaria – Estofado de Pollo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Cabin:wght@400;700&family=Satisfy&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <input type="file" id="photoInput" accept="image/*" style="display:none">
+
+  <div id="actionBar" class="action-bar">
+    <button class="btn-action" onclick="openPanel()">✏️ Editar flyer</button>
+    <button class="btn-action" onclick="exportPNG()">📥 Exportar PNG</button>
+  </div>
+
+  <div class="flyer" id="flyer">
+    <div class="bg-wood"></div>
+    <div class="flag-strip"><div class="fy"></div><div class="fb"></div><div class="fr"></div></div>
+    <div class="flag-strip-bottom"><div class="fy"></div><div class="fb"></div><div class="fr"></div></div>
+    <div class="ornament-border"></div>
+    <div class="corner c-tl"><svg viewBox="0 0 28 28" fill="none"><path d="M2 26L2 4Q2 2 4 2L26 2" stroke="#c8891e" stroke-width="1.5" fill="none"/><path d="M2 14Q8 8 14 2" stroke="#c8891e" stroke-width="0.8" fill="none" opacity="0.5"/><circle cx="2" cy="2" r="2" fill="#c8891e" opacity="0.8"/></svg></div>
+    <div class="corner c-tr"><svg viewBox="0 0 28 28" fill="none"><path d="M2 26L2 4Q2 2 4 2L26 2" stroke="#c8891e" stroke-width="1.5" fill="none"/><path d="M2 14Q8 8 14 2" stroke="#c8891e" stroke-width="0.8" fill="none" opacity="0.5"/><circle cx="2" cy="2" r="2" fill="#c8891e" opacity="0.8"/></svg></div>
+    <div class="corner c-bl"><svg viewBox="0 0 28 28" fill="none"><path d="M2 26L2 4Q2 2 4 2L26 2" stroke="#c8891e" stroke-width="1.5" fill="none"/><path d="M2 14Q8 8 14 2" stroke="#c8891e" stroke-width="0.8" fill="none" opacity="0.5"/><circle cx="2" cy="2" r="2" fill="#c8891e" opacity="0.8"/></svg></div>
+    <div class="corner c-br"><svg viewBox="0 0 28 28" fill="none"><path d="M2 26L2 4Q2 2 4 2L26 2" stroke="#c8891e" stroke-width="1.5" fill="none"/><path d="M2 14Q8 8 14 2" stroke="#c8891e" stroke-width="0.8" fill="none" opacity="0.5"/><circle cx="2" cy="2" r="2" fill="#c8891e" opacity="0.8"/></svg></div>
+    <div class="content">
+      <div class="top-label">
+        <div class="line"></div>
+        <span id="fl-badge">🤝 Comida Solidaria 🇪🇨</span>
+        <div class="line right"></div>
+      </div>
+      <div class="cursive-title" id="fl-subtitle">te invitamos a disfrutar</div>
+      <div class="dish-title">
+        <span id="fl-line1">Estofado de</span>
+        <em id="fl-line2">Pollo 🍗</em>
+      </div>
+      <div class="divider"><div class="d-line"></div><div class="d-icon">🍗</div><div class="d-line"></div></div>
+      <div class="photo-frame" id="photoFrame" onclick="handlePhotoClick()">
+        <div class="photo-inner" id="photoInner">
+          <div class="photo-placeholder">
+            <span class="ph-icon">🍽️</span>
+            <span class="ph-text">Tu foto acá</span>
+          </div>
+        </div>
+        <span class="photo-hint">📷 Cambiar foto</span>
+      </div>
+      <div class="divider" style="margin-top:16px"><div class="d-line"></div><div class="d-icon" style="font-size:.7rem;color:#c8891e">✦ ✦ ✦</div><div class="d-line"></div></div>
+      <div class="price-block">
+        <div class="price-amount" id="fl-price">$8.000</div>
+        <div class="price-label">por plato</div>
+      </div>
+      <div class="divider"><div class="d-line"></div><div class="d-icon">📋</div><div class="d-line"></div></div>
+      <div class="info-grid">
+        <div class="info-card">
+          <span class="ic-icon">📅</span>
+          <span class="ic-label">Cuándo</span>
+          <span class="ic-value" id="fl-date">Domingo<br>15 de Marzo</span>
+          <span class="ic-sub" id="fl-time">desde las 11 AM</span>
+        </div>
+        <div class="info-card">
+          <span class="ic-icon">📍</span>
+          <span class="ic-label">Retiro</span>
+          <span class="ic-value" id="fl-zona">Zona<br>Abasto</span>
+        </div>
+        <div class="info-card wide">
+          <span class="ic-icon">📞</span>
+          <span class="ic-label">Reservas</span>
+          <div class="phones">
+            <span id="fl-tel1">+54 11 3928 3936</span>
+            <span id="fl-tel2">+54 11 6034 8292</span>
+          </div>
+        </div>
+      </div>
+      <div class="divider" style="margin-top:14px;margin-bottom:6px"><div class="d-line"></div><div class="d-icon" style="font-size:.65rem;color:#c8891e;letter-spacing:3px">✦ ✦ ✦</div><div class="d-line"></div></div>
+      <div class="footer-text" id="fl-footer">¡Reservá tu plato ahora!</div>
+    </div>
+  </div>
+
+  <div class="reserva-section">
+    <div class="reserva-title">
+      <div class="line"></div><span>🛒 Hacé tu reserva</span><div class="line"></div>
+    </div>
+    <div class="reserva-card">
+      <h3>Reservá tu plato</h3>
+      <p>Completá el formulario y te llega la confirmación por WhatsApp.</p>
+      <div class="r-fields-row">
+        <div class="r-field"><label>Tu nombre</label><input type="text" id="r-nombre" placeholder="Ej: María"></div>
+        <div class="r-field"><label>Tu teléfono</label><input type="tel" id="r-tel" placeholder="+54 11 ..."></div>
+      </div>
+      <div class="r-field"><label>Dirección de entrega</label><input type="text" id="r-dir" placeholder="Calle, número, piso, depto..."></div>
+      <div class="r-fields-row">
+        <div class="r-field"><label>Cantidad de platos</label><input type="number" id="r-cant" min="1" value="1"></div>
+        <div class="r-field"><label>Horario preferido</label><input type="text" id="r-hora" placeholder="Ej: 12:00 PM"></div>
+      </div>
+      <div class="r-field"><label>Comentarios</label><textarea id="r-nota" placeholder="Sin picante, sin cebolla, etc."></textarea></div>
+      <button class="btn-whatsapp" onclick="enviarReserva()">💬 &nbsp;Enviar reserva por WhatsApp</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <button class="admin-trigger" id="adminTrigger" onclick="openLogin()">
+    <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 1 0 10A5 5 0 0 1 12 2zm0 12c5.33 0 8 2.67 8 4v2H4v-2c0-1.33 2.67-4 8-4z"/></svg>
+  </button>
+  <div class="logout-chip" id="logoutChip" onclick="doLogout()">🔓 &nbsp;Cerrar sesión</div>
+
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box" id="loginBox">
+      <div class="login-icon">🔐</div>
+      <div class="login-title">Acceso admin</div>
+      <div class="login-sub">Área restringida</div>
+      <div class="login-error" id="loginError">Usuario o contraseña incorrectos</div>
+      <div class="login-field"><label>Usuario</label><input type="text" id="l-user" placeholder="usuario" autocomplete="off"></div>
+      <div class="login-field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+      <button class="btn-login" onclick="doLogin()">Entrar</button>
+    </div>
+  </div>
+
+  <div class="panel-overlay" id="panelOverlay">
+    <div class="panel">
+      <div class="panel-title">✏️ Editar flyer</div>
+      <button class="panel-close" onclick="closePanel()">✕</button>
+      <div class="panel-section-title">Textos del flyer</div>
+      <div class="field-group"><label>Badge superior</label><input type="text" id="e-badge" value="🤝 Comida Solidaria 🇪🇨"></div>
+      <div class="field-group"><label>Subtítulo cursivo</label><input type="text" id="e-subtitle" value="te invitamos a disfrutar"></div>
+      <div class="fields-row">
+        <div class="field-group"><label>Plato línea 1</label><input type="text" id="e-line1" value="Estofado de"></div>
+        <div class="field-group"><label>Plato línea 2</label><input type="text" id="e-line2" value="Pollo 🍗"></div>
+      </div>
+      <div class="field-group"><label>Precio</label><input type="text" id="e-price" value="$8.000"></div>
+      <div class="fields-row">
+        <div class="field-group"><label>Fecha</label><input type="text" id="e-date" value="Domingo 15 de Marzo"></div>
+        <div class="field-group"><label>Horario</label><input type="text" id="e-time" value="desde las 11 AM"></div>
+      </div>
+      <div class="field-group"><label>Zona de retiro</label><input type="text" id="e-zona" value="Zona Abasto"></div>
+      <div class="fields-row">
+        <div class="field-group"><label>Teléfono 1</label><input type="text" id="e-tel1" value="+54 11 3928 3936"></div>
+        <div class="field-group"><label>Teléfono 2</label><input type="text" id="e-tel2" value="+54 11 6034 8292"></div>
+      </div>
+      <div class="field-group"><label>Texto footer</label><input type="text" id="e-footer" value="¡Reservá tu plato ahora!"></div>
+      <div class="panel-divider"></div>
+      <div class="panel-section-title">Configuración</div>
+      <div class="field-group"><label>📱 WhatsApp para recibir reservas (sin +)</label><input type="text" id="e-waowner" value="5491139283936"></div>
+      <button class="btn-save" onclick="applyChanges()">✅ &nbsp;Aplicar cambios</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
